@@ -1,6 +1,10 @@
 library(readr)
+library(tidyverse)
 birds <- read_delim("C:\\Users\\ggb24\\Downloads\\SequencedIndividualsBirdIDsExtra.txt")
 birds$BirdID
 View(birds)
 plot(birds$Lifespan,birds$FROH)
 abline(lm(birds$FROH~birds$Lifespan))
+birds_seq <- birds |> drop_na(Plate)
+length(birds_seq$BirdID)
+length(unique(birds_seq$BirdID))
