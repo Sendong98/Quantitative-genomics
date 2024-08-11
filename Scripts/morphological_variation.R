@@ -29,4 +29,15 @@ length(unique(birth_mass2$BirdID))*mean(unique(birth_mass2$BirdID)%in%vcf)
 
 # SNPs file sample id
 filename <- read.table("C:\\Users\\ggb24\\Downloads\\filename.txt")
+birth_mass1_snps_file <- birth_mass1[birth_mass1$BirdID%in%vcf,]
+birth_sex <- read_xlsx("birthdate_sex.xlsx")
+birth_mass1_snps_file_birth_sex <- left_join(birth_mass1_snps_file,birth_sex,by="BirdID")
+birth_mass1_snps_file_birth_sex <- birth_mass1_snps_file_birth_sex |> mutate(Sex=case_when("Female"~LastOfSex==0,"Male"~LastOfSex==1))
+birth_mass1_snps_file_birth_sex$Sex <- factor(birth_mass1_snps_file_birth_sex$Sex)
+
+write_delim(birth_mass1_snps_file_birth_sex,"phenotype_body_mass_juvenile.phen")
+
+pedigree_data <- read_xlsx("sys_PedigreeCombined.xlsx")
+pedigree_data_snp <- pedigree_data[pedigree_data$BirdID%in%birth_mass1_snps_file_birth_sex$BirdID,]
+pedigree_data_snp_dam <- pedigree_data_snp |> dplyr::select(BirdID:GeneticMother,GeneticFather) |> mutate(D_ID=case_when(GeneticFather=="NA"~SocialFather,GeneticFather!="NA"~GeneticFather),M_ID=case_when(GeneticMother=="NA"~SocialMother,GeneticMother!="NA"~GeneticMother))
 
