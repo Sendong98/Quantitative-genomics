@@ -4,10 +4,7 @@ library(tidyverse)
 library(lubridate)
 birds <- read_delim("C:\\Users\\ggb24\\Downloads\\SequencedIndividualsBirdIDsExtra.txt")
 birds$BirdID
-View(birds)
 vcf <- birds[birds$SeqID%in%filename$V1,]$BirdID
-plot(birds$Lifespan,birds$FROH)
-abline(lm(birds$FROH~birds$Lifespan))
 birds_seq <- birds |> drop_na(Plate)
 length(birds_seq$BirdID)
 length(unique(birds_seq$BirdID))
@@ -74,21 +71,22 @@ G1a <- read_grm("imputed_data_autosomes.grm.grm")
 names <- read.table("family_data_body_mass_juvenile.tfam", header = T)
 
 G1a_inv <- ginv(G1a$M)   #remember G1a is the GRM
-
-G1a_inv_step2 <- make.positive.definite(G1a_inv)
-G1a_inv_final <- as(G1a_inv_step2, "dgCMatrix")
 grm_order <- as.data.frame(basename(G1a$fam$id))
 colnames(grm_order) <- "SeqID"
 birds_seq <- birds_seq |> distinct()
 grm_order_id <- left_join(grm_order,birds_seq,by="SeqID")
 rownames(G1a_inv) <- grm_order_id[,2]
+rownames(G1a_inv)[duplicated(rownames(G1a_inv))] <- paste0(rownames(G1a_inv)[duplicated(rownames(G1a_inv))],"_2")
+rownames(G1a_inv)[duplicated(rownames(G1a_inv))] <- paste0(rownames(G1a_inv)[duplicated(rownames(G1a_inv))],"_2")
 colnames(G1a_inv) <- grm_order_id[,2]
-
+colnames(G1a_inv)[duplicated(colnames(G1a_inv))] <- paste0(colnames(G1a_inv)[duplicated(colnames(G1a_inv))],"_2")
+colnames(G1a_inv)[duplicated(colnames(G1a_inv))] <- paste0(colnames(G1a_inv)[duplicated(colnames(G1a_inv))],"_2")
+G1a_inv_step2 <- make.positive.definite(G1a_inv)
+G1a_inv_final <- as(G1a_inv_step2, "dgCMatrix")
 # setting up MCMCglmm prior
 prior <- list(R=list(V=1,nu=1),G=list(G1=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),
                                       G2=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),G3=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),
-                                      G4=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),G5=list(V=1,nu=1,alpha.mu=0,alpha.V=1000)))
-
+                                      G4=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),G5=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),G6=list(V=1,nu=1,alpha.mu=0,alpha.V=1000)))
 prior2 <- list(R=list(V=1,nu=1),G=list(G1=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),
                                        G2=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),G3=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),
                                        G4=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),G5=list(V=1,nu=1,alpha.mu=0,alpha.V=1000),
@@ -98,9 +96,16 @@ prior2 <- list(R=list(V=1,nu=1),G=list(G1=list(V=1,nu=1,alpha.mu=0,alpha.V=1000)
 pedigree_data_snp_dam <- read_delim("family_data_body_mass_juvenile.tfam")
 birth_mass1_snps_file_birth_sex <- read_delim("phenotype_body_mass_juvenile.phen")
 data_mass <- left_join(birth_mass1_snps_file_birth_sex,pedigree_data_snp_dam,by="BirdID",relationship = "many-to-many")
-mass_genomic <- MCMCglmm(BodyMass ~ Sex + ClutchSize, 
-                           random=~BirdID+D_ID+M_ID+day+year(OccasionDate)+TerritoryID,
-                           ginverse=list(BirdID=G1a_inv), data=data_mass, prior= prior,       ## the data file contains IDs and trait columns (Sex, ...)
+data_mass <- as.data.frame(data_mass)
+data_mass$BirdID <- as.factor(data_mass$BirdID)
+data_mass$Sex <- as.factor(data_mass$Sex)
+data_mass$D_ID <- as.factor(data_mass$D_ID)
+data_mass$M_ID <- as.factor(data_mass$M_ID)
+data_mass_1 <- data_mass |> drop_na(D_ID,M_ID) |> mutate(year=as.factor(year(OccasionDate)))
+
+mass_genomic <- MCMCglmm(BodyMass ~ Sex , 
+                           random=~BirdID+D_ID+M_ID+day+year+TerritoryID,
+                           ginverse=list(BirdID=G1a_inv_final), data=data_mass_1, prior= prior,       ## the data file contains IDs and trait columns (Sex, ...)
                            nitt=503000, thin=10, burnin=3000)
 
 ## example run MCMCglmm: chromosome partitioning
