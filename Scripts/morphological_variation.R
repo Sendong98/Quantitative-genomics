@@ -107,6 +107,7 @@ mass_genomic <- MCMCglmm(BodyMass ~ Sex ,
                            random=~BirdID+D_ID+M_ID+day+year+TerritoryID,
                            ginverse=list(BirdID=G1a_inv_final), data=data_mass_1, prior= prior,       ## the data file contains IDs and trait columns (Sex, ...)
                            nitt=503000, thin=10, burnin=3000)
+write_rds(mass_genomic,"mass.RDS")
 
 ## example run MCMCglmm: chromosome partitioning
 Tarsus_chr_part_chr_1 <- MCMCglmm(FldgTarsus ~ Sex + ClutchSize, 
